@@ -131,10 +131,10 @@ public:
 	void sub(callback_t<E> callback);
 
 	template <typename E, typename... Args>
-	void dispatch(const Args&&... args);
+	void dispatch(Args&&... args);
 
 	template <typename E, typename... Args>
-	void dispatch(const E&& event, const Args&&... args);
+	void dispatch(const E&& event, Args&&... args);
 
 private:
 	detail::map_tuple_t<events, callback_vector_t> m_event_vectors;
@@ -157,14 +157,14 @@ void bus<Es>::sub(callback_t<E> callback)
 
 template <typename Es>
 template <typename E, typename... Args>
-void bus<Es>::dispatch(const Args&& ... args)
+void bus<Es>::dispatch(Args&& ... args)
 {
-	dispatch(E{}, std::forward<const Args>(args)...);
+	dispatch(E{}, std::forward<Args>(args)...);
 }
 
 template <typename Es>
 template <typename E, typename... Args>
-void bus<Es>::dispatch(const E&& event, const Args&&... args)
+void bus<Es>::dispatch(const E&& event, Args&&... args)
 {
 	callback_vector_t<E>& vector = std::get<callback_vector_t<E>>(m_event_vectors);
 	for(auto& callback : vector)
