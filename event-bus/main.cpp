@@ -37,7 +37,8 @@ int main()
 	b.sub(l);
 	std::function<void(const event1&)> ff = std::bind(&f, std::placeholders::_1);
 	b.sub<event1>(ff);
-	b.dispatch(event1{ 7 });
+	event1 e1{ 7 };
+	b.dispatch(e1);
 	b.dispatch<event2>(C{ 5 });
 	b.dispatch(event3{ {}, {true} }, 10);
 	return 0;

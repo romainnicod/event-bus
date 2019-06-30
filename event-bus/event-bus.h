@@ -134,7 +134,7 @@ public:
 	void dispatch(Args&&... args);
 
 	template <typename E, typename... Args>
-	void dispatch(const E&& event, Args&&... args);
+	void dispatch(E&& event, Args&&... args);
 
 private:
 	detail::map_tuple_t<events_t, callback_vector_t> m_event_vectors;
@@ -164,9 +164,9 @@ void bus<Es>::dispatch(Args&& ... args)
 
 template <typename Es>
 template <typename E, typename... Args>
-void bus<Es>::dispatch(const E&& event, Args&&... args)
+void bus<Es>::dispatch(E&& event, Args&&... args)
 {
-	callback_vector_t<E>& vector = std::get<callback_vector_t<E>>(m_event_vectors);
+	callback_vector_t<std::decay_t<E>>& vector = std::get<callback_vector_t<std::decay_t<E>>>(m_event_vectors);
 	for(auto& callback : vector)
 		callback(event, args...);
 }
