@@ -117,7 +117,7 @@ struct auto_sub<Es, std::tuple<>>
 template <typename Es>
 class bus
 {
-	using events = Es;
+	using events_t = Es;
 	template <typename E>
 	using callback_t = std::function<detail::get_event_callback_t<E>>;
 	template <typename E>
@@ -137,7 +137,7 @@ public:
 	void dispatch(const E&& event, Args&&... args);
 
 private:
-	detail::map_tuple_t<events, callback_vector_t> m_event_vectors;
+	detail::map_tuple_t<events_t, callback_vector_t> m_event_vectors;
 };
 
 template <typename Es>
