@@ -28,7 +28,7 @@ using map_tuple_t = typename map_tuple<E, T>::type;
 template <typename E, typename V = void>
 struct get_event_callback
 {
-	using type = void(const E&);
+	using type = void(E&);
 };
 
 template <typename E>
@@ -46,7 +46,7 @@ struct add_event_parameter;
 template <typename E, typename R, typename... Args>
 struct add_event_parameter<E, R(Args...)>
 {
-	using type = R(const E&, Args...);
+	using type = R(E&, Args...);
 };
 
 template <typename E, typename F>
