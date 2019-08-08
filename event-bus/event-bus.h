@@ -7,7 +7,7 @@
 namespace eb
 {
 
-template <typename E>
+template <typename Es>
 class bus;
 
 namespace detail
@@ -152,12 +152,12 @@ template <typename E>
 void bus<Es>::sub(callback_t<E> callback)
 {
 	callback_vector_t<E>& vector = std::get<callback_vector_t<E>>(m_event_vectors);
-	vector.emplace_back(std::move(callback));
+	vector.push_back(std::move(callback));
 }
 
 template <typename Es>
 template <typename E, typename... Args>
-void bus<Es>::dispatch(Args&& ... args)
+void bus<Es>::dispatch(Args&&... args)
 {
 	dispatch(E{}, std::forward<Args>(args)...);
 }
@@ -168,7 +168,7 @@ void bus<Es>::dispatch(E&& event, Args&&... args)
 {
 	callback_vector_t<std::decay_t<E>>& vector = std::get<callback_vector_t<std::decay_t<E>>>(m_event_vectors);
 	for(auto& callback : vector)
-		callback(event, args...);
+		callback(event, std::forward<Args>(args)...);
 }
 
 template <typename E, typename F>
