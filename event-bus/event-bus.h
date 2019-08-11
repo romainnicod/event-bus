@@ -3,6 +3,7 @@
 #include <tuple>
 #include <vector>
 #include <functional>
+#include <map>
 
 namespace eb
 {
@@ -87,29 +88,8 @@ constexpr bool has_on_v = has_on<T, CB>::value;
 template <typename Es, typename Tu = Es>
 struct auto_sub
 {
-	template <typename T>
-	void operator()(T& object);
-};
-
-template <typename Es, typename H, typename... Tail>
-struct auto_sub<Es, std::tuple<H, Tail...>>
-{
-	template <typename T>
-	auto operator()(T& object)
-	{
-		if constexpr(has_on_v<T, get_event_callback_t<H>>)
-			host->sub<H>([&object](auto&&... event) { object.on(std::forward<decltype(event)>(event)...); });
-		auto_sub<Es, std::tuple<Tail...>>{ host }(object);
-	}
-	bus<Es>* host;
-};
-
-template <typename Es>
-struct auto_sub<Es, std::tuple<>>
-{
-	template <typename T>
-	auto operator()(T& object) {}
-	bus<Es>* host;
+	template <typename B, typename T, typename... Args>
+	void operator()(B&& bus, T& object, Args&& ... args);
 };
 
 } // namespace detail
@@ -131,10 +111,10 @@ public:
 	void sub(callback_t<E> callback);
 
 	template <typename E, typename... Args>
-	void dispatch(Args&&... args);
+	void dispatch(Args&& ... args);
 
 	template <typename E, typename... Args>
-	void dispatch(E&& event, Args&&... args);
+	void dispatch(E&& event, Args&& ... args);
 
 private:
 	detail::map_tuple_t<events_t, callback_vector_t> m_event_vectors;
@@ -144,7 +124,7 @@ template <typename Es>
 template <typename T>
 void bus<Es>::sub(T& object)
 {
-	detail::auto_sub<Es>{ this }(object);
+	detail::auto_sub<Es>{}(*this, object);
 }
 
 template <typename Es>
@@ -157,19 +137,108 @@ void bus<Es>::sub(callback_t<E> callback)
 
 template <typename Es>
 template <typename E, typename... Args>
-void bus<Es>::dispatch(Args&&... args)
+void bus<Es>::dispatch(Args&& ... args)
 {
 	dispatch(E{}, std::forward<Args>(args)...);
 }
 
 template <typename Es>
 template <typename E, typename... Args>
-void bus<Es>::dispatch(E&& event, Args&&... args)
+void bus<Es>::dispatch(E&& event, Args&& ... args)
 {
 	callback_vector_t<std::decay_t<E>>& vector = std::get<callback_vector_t<std::decay_t<E>>>(m_event_vectors);
 	for(auto& callback : vector)
 		callback(event, std::forward<Args>(args)...);
 }
+
+template <typename Es, typename K>
+class categorized_bus
+{
+	using events_t = Es;
+	template <typename E>
+	using callback_t = std::function<detail::get_event_callback_t<E>>;
+	template <typename E>
+	using callback_vector_t = std::vector<callback_t<E>>;
+	template <typename E>
+	using callback_categories_t = std::map<K, callback_vector_t<E>>;
+
+public:
+	template <typename T>
+	void sub(T& object, const K& category);
+
+	template <typename E>
+	void sub(callback_t<E> callback, const K& category);
+
+	template <typename E, typename... Args>
+	void dispatch(const K& category, Args&&... args);
+
+	template <typename E, typename... Args>
+	void dispatch(E&& event, const K& catgeory, Args&& ... args);
+
+private:
+	detail::map_tuple_t<events_t, callback_categories_t> m_event_categories;
+};
+
+template <typename Es, typename K>
+template <typename T>
+void categorized_bus<Es, K>::sub(T& object, const K& category)
+{
+	detail::auto_sub<Es>{}(*this, object, category);
+}
+
+template <typename Es, typename K>
+template <typename E>
+void categorized_bus<Es, K>::sub(callback_t<E> callback, const K& category)
+{
+	callback_categories_t<E>& categories = std::get<callback_categories_t<E>>(m_event_categories);
+	callback_vector_t<E>& vector = categories[category];
+	vector.push_back(std::move(callback));
+}
+
+template <typename Es, typename K>
+template <typename E, typename... Args>
+void categorized_bus<Es, K>::dispatch(const K& category, Args&& ... args)
+{
+	dispatch(E{}, category, std::forward<Args>(args)...);
+}
+
+template <typename Es, typename K>
+template <typename E, typename... Args>
+void categorized_bus<Es, K>::dispatch(E&& event, const K& category, Args&& ... args)
+{
+	using dE = std::decay_t<E>;
+	callback_categories_t<dE>& categories = std::get<callback_categories_t<dE>>(m_event_categories);
+	if(auto cat_it = categories.find(category); cat_it != categories.end())
+	{
+		callback_vector_t<E>& vector = cat_it->second;
+		for(auto& callback : vector)
+			callback(event, std::forward<Args>(args)...);
+	}
+}
+
+namespace detail
+{
+
+template <typename H, typename... Tail>
+struct auto_sub<std::tuple<H, Tail...>>
+{
+	template <typename B, typename T, typename... Args>
+	auto operator()(B&& bus, T& object, Args&& ... args)
+	{
+		if constexpr(has_on_v<T, get_event_callback_t<H>>)
+			bus.sub<H>([&object](auto&& ... event) { object.on(std::forward<decltype(event)>(event)...); }, std::forward<Args>(args)...);
+		auto_sub<std::tuple<Tail...>>{}(bus, object, std::forward<Args>(args)...);
+	}
+};
+
+template <>
+struct auto_sub<std::tuple<>>
+{
+	template <typename B, typename T, typename... Args>
+	auto operator()(B&& bus, T& object, Args&& ... args) {}
+};
+
+} // namespace detail
 
 template <typename E, typename F>
 struct custom_event
