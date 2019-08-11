@@ -210,7 +210,7 @@ void categorized_bus<Es, K>::dispatch(E&& event, const K& category, Args&& ... a
 	callback_categories_t<dE>& categories = std::get<callback_categories_t<dE>>(m_event_categories);
 	if(auto cat_it = categories.find(category); cat_it != categories.end())
 	{
-		callback_vector_t<E>& vector = cat_it->second;
+		callback_vector_t<dE>& vector = cat_it->second;
 		for(auto& callback : vector)
 			callback(event, std::forward<Args>(args)...);
 	}
