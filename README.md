@@ -1,5 +1,5 @@
 # Event Bus
-Simple event bus library with automatic subscription support
+Experimental event bus library with automatic subscription support.
 
 # Usage
 ## Simple events
